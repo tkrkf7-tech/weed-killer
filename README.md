@@ -1,5 +1,17 @@
 # weed-killer
 AI robot on Raspberry Pi performs camera inference, detects weeds, lights Arduino LED, and motion
+## Environment
+- Raspberry Pi (tested on Pi 5)
+- HAT 
+- Adeept PiCar-Pro
+- Arduino (LED control via Serial)
+- USB Camera
+## How to Run
+1. Connect Arduino via USB (/dev/ttyACM0) also camera
+2. Power on Raspberry Pi and robot
+3. Run: /usr/bin/python3 /home/wolf/scan_drive.py
+## Auto boot
+Auto-start on boot can be configured using systemd.
 #========================
 # Essential setting import
 #=========================
@@ -48,6 +60,51 @@ def led_on():
 def led_off():
     notify_arduino("CLEAR")
 
+# =========================
+# (B-2) Arduino code. T
+// ================================
+// Arduino LED Control (FINAL)
+// LED turns ON only while "weed" voice is spoken
+// Command from Raspberry Pi:
+//   "WEED"  -> LED ON
+//   "CLEAR" -> LED OFF
+// ================================
+
+const int LED_PIN = 8;   // 🔴 Pin connected Arduino (D8)
+String line = "";
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);   // LED OFF when starting
+
+  Serial.begin(9600);
+  Serial.println("ARDUINO READY");
+}
+
+void loop() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+
+    if (c == '\n' || c == '\r') {
+      line.trim();
+
+      if (line == "WEED") {
+        digitalWrite(LED_PIN, HIGH);   // 🔴 LED ON
+      }
+      else if (line == "CLEAR") {
+        digitalWrite(LED_PIN, LOW);    // ⚫ LED OFF
+      }
+
+      line = "";  // Buffer initialization
+    }
+    else {
+      line += c;
+      if (line.length() > 32) {
+        line = ""; // safety device
+      }
+    }
+  }
+}
 # =========================
 # (C) Servo(Adeept RPIservo)
 #Because the robot is from Adeept, so we used the Adeept & RPIservo from Adeept
